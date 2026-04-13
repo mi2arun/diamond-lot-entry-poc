@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Three-Column Pro — Diamond Picker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08080a;--surface:#0e0e12;--card:#141418;--elevated:#1a1a20;--hover:#222228;--active:#2a2a32;
+  --accent:#d4a853;--accent-b:#f0c95e;--accent-d:#9a7a3a;--accent-g:rgba(212,168,83,0.12);--accent-gs:rgba(212,168,83,0.25);
+  --ok:#2dd4a0;--ok-g:rgba(45,212,160,0.12);--info:#60a5fa;--err:#f87171;
+  --t1:#e8e6e3;--t2:#7a7a80;--t3:#4a4a50;--t4:#333338;
+  --border:#222228;--border-a:rgba(212,168,83,0.3);
+  --font:'Outfit',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{font-family:var(--font);background:var(--bg);color:var(--t1);height:100%;overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none}
+#app{width:100%;height:100%;max-width:412px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+
+/* Status */
+.status{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.status .name{font-weight:600;font-size:13px;color:var(--accent);letter-spacing:.5px}
+.status .badge{font-family:var(--mono);font-size:11px;color:var(--t2);background:var(--elevated);padding:3px 10px;border-radius:20px}
+.status .time{font-family:var(--mono);font-size:11px;color:var(--t3)}
+
+/* Selected display */
+.sel-bar{display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.sel-val{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent-b);letter-spacing:2px;min-width:36px;text-align:center;transition:all .2s ease}
+.sel-val.empty{color:var(--t4);font-size:18px}
+.sel-val.pop{animation:valPop .3s ease}
+.sel-sep{color:var(--t4);font-size:12px}
+
+/* Preset bar */
+.preset-bar{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.preset-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 12px;background:var(--elevated);border:1px solid var(--border);border-radius:20px;
+  font-family:var(--mono);font-size:10px;font-weight:600;color:var(--t2);
+  cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s ease
+}
+.preset-btn:active{background:var(--accent-g);border-color:var(--accent-d);color:var(--accent);transform:scale(.95)}
+.preset-btn .preset-icon{font-size:12px}
+.preset-btn.accent{background:var(--accent-g);border-color:var(--border-a);color:var(--accent)}
+
+/* Three columns */
+.columns{display:flex;flex:1;overflow:hidden;position:relative}
+
+/* Center highlight band */
+.highlight-band{
+  position:absolute;top:50%;left:0;right:0;
+  height:52px;transform:translateY(-50%);
+  background:linear-gradient(90deg,var(--accent-g),var(--accent-gs),var(--accent-g));
+  border-top:1px solid var(--border-a);border-bottom:1px solid var(--border-a);
+  pointer-events:none;z-index:2;opacity:.5
+}
+
+.column{flex:1;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;position:relative}
+.column:last-child{border-right:none}
+.column.wide{flex:1.3}
+
+/* Column header */
+.col-head{padding:8px 6px;text-align:center;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;position:relative}
+.col-head-row{display:flex;align-items:center;justify-content:center;gap:4px}
+.col-head h4{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--t2)}
+.col-head .col-sel{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--accent-b);min-height:18px;margin-top:1px}
+.filter-btn{
+  width:24px;height:24px;border-radius:6px;
+  background:var(--elevated);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:var(--t3);cursor:pointer;
+  position:absolute;right:6px;top:8px;transition:all .15s ease
+}
+.filter-btn:active,.filter-btn.active{background:var(--accent-g);border-color:var(--accent-d);color:var(--accent)}
+
+/* Filter input */
+.col-filter{
+  overflow:hidden;max-height:0;transition:max-height .25s ease;
+  background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0
+}
+.col-filter.open{max-height:44px}
+.col-filter input{
+  width:100%;padding:8px 10px;background:var(--elevated);border:none;
+  color:var(--t1);font-family:var(--mono);font-size:12px;
+  outline:none;caret-color:var(--accent)
+}
+.col-filter input::placeholder{color:var(--t3)}
+
+/* Favorites */
+.col-favs{
+  display:flex;gap:4px;padding:6px 4px;background:var(--surface);
+  border-bottom:1px solid var(--border);flex-shrink:0;justify-content:center;flex-wrap:wrap
+}
+.fav-chip{
+  padding:4px 10px;border-radius:12px;
+  background:var(--ok-g);border:1px solid rgba(45,212,160,.2);
+  font-family:var(--mono);font-size:10px;font-weight:600;color:var(--ok);
+  cursor:pointer;transition:all .15s ease
+}
+.fav-chip:active{transform:scale(.9);background:rgba(45,212,160,.25)}
+
+/* Column scroll */
+.col-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px 3px;scroll-snap-type:y proximity}
+
+/* Group label */
+.col-group{
+  font-size:8px;font-weight:700;color:var(--t3);text-transform:uppercase;
+  letter-spacing:1px;padding:8px 4px 4px;text-align:center
+}
+
+/* Column items */
+.col-item{
+  display:flex;align-items:center;justify-content:center;
+  padding:12px 6px;margin:2px;
+  background:var(--card);border:1.5px solid transparent;border-radius:8px;
+  font-family:var(--mono);font-size:14px;font-weight:600;color:var(--t1);
+  cursor:pointer;transition:all .15s ease;text-align:center;
+  min-height:46px;scroll-snap-align:center
+}
+.col-item:active{transform:scale(.93)}
+.col-item.selected{
+  background:var(--accent-gs);border-color:var(--accent);color:var(--accent-b);
+  box-shadow:0 0 16px var(--accent-g),inset 0 0 12px var(--accent-g)
+}
+.col-item.filtered-out{display:none}
+
+/* Color-coded groups */
+.col-item.grade-colorless{border-left:2px solid rgba(96,165,250,.3)}
+.col-item.grade-near{border-left:2px solid rgba(45,212,160,.3)}
+.col-item.grade-faint{border-left:2px solid rgba(251,191,36,.3)}
+.col-item.grade-light{border-left:2px solid rgba(248,113,113,.3)}
+.col-item.grade-fancy{border-left:2px solid rgba(167,139,250,.3)}
+
+/* Clarity grade coding */
+.col-item.clar-fl{border-left:2px solid rgba(96,165,250,.4)}
+.col-item.clar-vvs{border-left:2px solid rgba(45,212,160,.3)}
+.col-item.clar-vs{border-left:2px solid rgba(251,191,36,.3)}
+.col-item.clar-si{border-left:2px solid rgba(248,113,113,.3)}
+.col-item.clar-i{border-left:2px solid rgba(167,139,250,.3)}
+
+/* Shape items */
+.col-item.shape-item{flex-direction:column;gap:2px;padding:8px 4px}
+.col-item.shape-item svg{width:20px;height:20px;fill:none;stroke:var(--t2);stroke-width:1.5;transition:stroke .15s ease}
+.col-item.shape-item.selected svg{stroke:var(--accent-b)}
+.col-item.shape-item .s-name{font-size:9px;font-weight:500}
+
+/* Secondary */
+.secondary{padding:6px 10px 4px;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0}
+.sec-row{display:flex;align-items:center;gap:5px;margin-bottom:5px}
+.sec-label{font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;min-width:38px}
+.sec-chips{display:flex;gap:4px;overflow-x:auto;flex:1;-webkit-overflow-scrolling:touch}
+.sec-chip{
+  padding:7px 12px;background:var(--card);border:1px solid var(--border);border-radius:16px;
+  font-family:var(--mono);font-size:11px;font-weight:600;color:var(--t1);
+  cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s ease
+}
+.sec-chip:active{transform:scale(.93)}
+.sec-chip.selected{background:var(--accent-gs);border-color:var(--accent);color:var(--accent-b)}
+
+/* Bottom */
+.bottom-bar{display:flex;gap:8px;padding:8px 12px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--border);flex-shrink:0}
+.btn{flex:1;padding:14px;border-radius:12px;border:none;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s ease}
+.btn-sec{background:var(--elevated);color:var(--t2);border:1px solid var(--border)}
+.btn-pri{background:var(--accent);color:var(--bg)}
+.btn-pri.ready{animation:btnPulse 1.5s ease infinite}
+.btn:active{transform:scale(.97)}
+
+/* Lot counter */
+.lot-counter{
+  position:absolute;top:50%;right:12px;transform:translateY(-50%);
+  font-family:var(--mono);font-size:10px;color:var(--ok);
+  background:var(--ok-g);padding:2px 8px;border-radius:10px;
+  border:1px solid rgba(45,212,160,.2)
+}
+
+/* Animations */
+@keyframes valPop{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+@keyframes btnPulse{0%,100%{box-shadow:0 0 0 0 var(--accent-gs)}50%{box-shadow:0 0 0 6px transparent}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Toast */
+.toast{
+  position:absolute;top:50px;left:50%;transform:translateX(-50%) translateY(-16px);
+  background:var(--elevated);border:1px solid var(--border-a);border-radius:20px;
+  padding:8px 18px;font-family:var(--mono);font-size:12px;color:var(--accent);
+  opacity:0;pointer-events:none;transition:all .3s ease;z-index:30;white-space:nowrap
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+::-webkit-scrollbar{width:0;height:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="status">
+    <span class="name">Arctic Canadian</span>
+    <span class="badge" id="lot-badge">Lot 1</span>
+    <span class="time" id="clock">--:--</span>
+  </div>
+
+  <!-- Selected display -->
+  <div class="sel-bar">
+    <span class="sel-val empty" id="d-shape">—</span>
+    <span class="sel-sep">·</span>
+    <span class="sel-val empty" id="d-color">—</span>
+    <span class="sel-sep">·</span>
+    <span class="sel-val empty" id="d-clarity">—</span>
+  </div>
+
+  <!-- Presets -->
+  <div class="preset-bar" id="preset-bar">
+    <span class="preset-btn accent" onclick="applyPreset('RD','G','VS1','None','None','GS')"><span class="preset-icon">★</span> RD G VS1</span>
+    <span class="preset-btn" onclick="applyPreset('OV','H','VS2','Faint','None','GM')"><span class="preset-icon">↻</span> OV H VS2</span>
+    <span class="preset-btn" onclick="dupLast()"><span class="preset-icon">⧉</span> Dup Last</span>
+  </div>
+
+  <!-- Three columns -->
+  <div class="columns">
+    <div class="highlight-band"></div>
+
+    <!-- Shape -->
+    <div class="column" id="col-shape-wrap">
+      <div class="col-head">
+        <div class="col-head-row"><h4>Shape</h4></div>
+        <div class="col-sel" id="h-shape">—</div>
+        <button class="filter-btn" id="fb-shape" onclick="toggleFilter('shape')" style="outline:none!important">⌕</button>
+      </div>
+      <div class="col-filter" id="cf-shape"><input type="text" placeholder="Filter..." oninput="filterCol('shape',this.value)" style="outline:none!important"></div>
+      <div class="col-favs" id="fav-shape"></div>
+      <div class="col-scroll" id="col-shape"></div>
+    </div>
+
+    <!-- Color -->
+    <div class="column wide" id="col-color-wrap">
+      <div class="col-head">
+        <div class="col-head-row"><h4>Color</h4></div>
+        <div class="col-sel" id="h-color">—</div>
+        <button class="filter-btn" id="fb-color" onclick="toggleFilter('color')" style="outline:none!important">⌕</button>
+      </div>
+      <div class="col-filter" id="cf-color"><input type="text" placeholder="Filter..." oninput="filterCol('color',this.value)" style="outline:none!important"></div>
+      <div class="col-favs" id="fav-color"></div>
+      <div class="col-scroll" id="col-color"></div>
+    </div>
+
+    <!-- Clarity -->
+    <div class="column" id="col-clarity-wrap">
+      <div class="col-head">
+        <div class="col-head-row"><h4>Clarity</h4></div>
+        <div class="col-sel" id="h-clarity">—</div>
+        <button class="filter-btn" id="fb-clarity" onclick="toggleFilter('clarity')" style="outline:none!important">⌕</button>
+      </div>
+      <div class="col-filter" id="cf-clarity"><input type="text" placeholder="Filter..." oninput="filterCol('clarity',this.value)" style="outline:none!important"></div>
+      <div class="col-favs" id="fav-clarity"></div>
+      <div class="col-scroll" id="col-clarity"></div>
+    </div>
+  </div>
+
+  <!-- Secondary -->
+  <div class="secondary" id="secondary"></div>
+
+  <!-- Bottom -->
+  <div class="bottom-bar">
+    <button class="btn btn-sec" onclick="resetAll()">Clear</button>
+    <button class="btn btn-pri" id="save-btn" onclick="saveLot()">Save Lot →</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════
+const SHAPES=[
+  {c:'RD',n:'Round',svg:'<circle cx="14" cy="14" r="11"/>'},
+  {c:'OV',n:'Oval',svg:'<ellipse cx="14" cy="14" rx="8" ry="11"/>'},
+  {c:'PR',n:'Pear',svg:'<path d="M14 3C14 3 5 11 5 17c0 4 4 7 9 7s9-3 9-7C23 11 14 3 14 3z"/>'},
+  {c:'CU',n:'Cushion',svg:'<rect x="3" y="3" width="22" height="22" rx="7"/>'},
+  {c:'PN',n:'Princess',svg:'<rect x="3" y="3" width="22" height="22" rx="1"/>'},
+  {c:'EM',n:'Emerald',svg:'<rect x="2" y="5" width="24" height="18" rx="3"/>'},
+  {c:'MQ',n:'Marquise',svg:'<ellipse cx="14" cy="14" rx="7" ry="12"/>'},
+  {c:'RN',n:'Radiant',svg:'<rect x="3" y="3" width="22" height="22" rx="3"/>'},
+  {c:'HT',n:'Heart',svg:'<path d="M14 24C14 24 3 17 3 10c0-3.5 2.5-6 5.5-6C11 4 14 7 14 7s3-3 5.5-3C22.5 4 25 6.5 25 10c0 7-11 14-11 14z"/>'},
+  {c:'TR',n:'Trillion',svg:'<polygon points="14,3 25,25 3,25"/>'},
+  {c:'BG',n:'Baguette',svg:'<rect x="4" y="7" width="20" height="14" rx="1"/>'},
+  {c:'AS',n:'Asscher',svg:'<rect x="4" y="4" width="20" height="20" rx="2"/>'},
+  {c:'MC',n:'Macle',svg:'<polygon points="14,2 26,14 14,26 2,14"/>'},
+  {c:'SW',n:'Sawable',svg:'<polygon points="14,3 24,10 20,24 8,24 4,10"/>'}
+];
+
+const COLOR_GROUPS=[
+  {g:'Colorless',grade:'colorless',items:['D','E','F']},
+  {g:'Near Colorless',grade:'near',items:['G','H','I','J']},
+  {g:'Faint',grade:'faint',items:['K','L','M']},
+  {g:'Very Light',grade:'light',items:['N','O','P','Q','R']},
+  {g:'Light',grade:'light',items:['S','T','U','V','W','X','Y','Z']},
+  {g:'Fancy',grade:'fancy',items:['FY','FP','FB','FBR','FG','FO']}
+];
+
+const CLARITY_GROUPS=[
+  {g:'Flawless',grade:'fl',items:['FL','IF']},
+  {g:'VV Slight',grade:'vvs',items:['VVS1','VVS2']},
+  {g:'V Slight',grade:'vs',items:['VS1','VS2']},
+  {g:'Slight Incl.',grade:'si',items:['SI1','SI2','SI3']},
+  {g:'Included',grade:'i',items:['I1','I2','I3']}
+];
+
+const FLUOR=['None','Faint','Medium','Strong','V.Strong'];
+const TINGE=['None','Brown','Green','Milky','BGM','LBT','SBT','LGT','SGT'];
+const ROUGH=['GS','GM','FS','LS','NG','CH','IN','CL','BT','RJ'];
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const sel={shape:null,color:null,clarity:null,fluor:null,tinge:null,rough:null};
+const freq={shape:{},color:{},clarity:{}};
+const lots=[];
+let lotNum=1;
+
+// ═══════════════════════════════════════════
+// TIME
+// ═══════════════════════════════════════════
+function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+tick();setInterval(tick,10000);
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+function render(){
+  renderShapes();
+  renderColors();
+  renderClarity();
+  renderSecondary();
+  renderFavorites();
+  updateDisplay();
+}
+
+function renderShapes(){
+  const el=document.getElementById('col-shape');
+  el.innerHTML=SHAPES.map(s=>{
+    const c=sel.shape===s.c?'selected':'';
+    return `<div class="col-item shape-item ${c}" data-code="${s.c}" onclick="pick('shape','${s.c}')">
+      <svg viewBox="0 0 28 28">${s.svg}</svg><span class="s-name">${s.c}</span></div>`;
+  }).join('');
+}
+
+function renderColors(){
+  const el=document.getElementById('col-color');
+  let h='';
+  COLOR_GROUPS.forEach(g=>{
+    h+=`<div class="col-group">${g.g}</div>`;
+    g.items.forEach(c=>{
+      const s=sel.color===c?'selected':'';
+      h+=`<div class="col-item grade-${g.grade} ${s}" data-code="${c}" onclick="pick('color','${c}')">${c}</div>`;
+    });
+  });
+  el.innerHTML=h;
+}
+
+function renderClarity(){
+  const el=document.getElementById('col-clarity');
+  let h='';
+  CLARITY_GROUPS.forEach(g=>{
+    h+=`<div class="col-group">${g.g}</div>`;
+    g.items.forEach(c=>{
+      const s=sel.clarity===c?'selected':'';
+      h+=`<div class="col-item clar-${g.grade} ${s}" data-code="${c}" onclick="pick('clarity','${c}')">${c}</div>`;
+    });
+  });
+  el.innerHTML=h;
+}
+
+function renderSecondary(){
+  const el=document.getElementById('secondary');
+  let h='';
+  h+=`<div class="sec-row"><span class="sec-label">Fluor</span><div class="sec-chips">${FLUOR.map(f=>`<span class="sec-chip ${sel.fluor===f?'selected':''}" onclick="pick('fluor','${f}')">${f}</span>`).join('')}</div></div>`;
+  h+=`<div class="sec-row"><span class="sec-label">Tinge</span><div class="sec-chips">${TINGE.map(t=>`<span class="sec-chip ${sel.tinge===t?'selected':''}" onclick="pick('tinge','${t}')">${t}</span>`).join('')}</div></div>`;
+  h+=`<div class="sec-row"><span class="sec-label">Type</span><div class="sec-chips">${ROUGH.map(r=>`<span class="sec-chip ${sel.rough===r?'selected':''}" onclick="pick('rough','${r}')">${r}</span>`).join('')}</div></div>`;
+  el.innerHTML=h;
+}
+
+function renderFavorites(){
+  ['shape','color','clarity'].forEach(cat=>{
+    const el=document.getElementById('fav-'+cat);
+    const f=freq[cat];
+    const sorted=Object.entries(f).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    if(sorted.length===0){el.style.display='none';return}
+    el.style.display='flex';
+    el.innerHTML=sorted.map(([code])=>
+      `<span class="fav-chip" onclick="pick('${cat}','${code}')">${code}</span>`
+    ).join('');
+  });
+}
+
+function updateDisplay(){
+  // Big display values
+  ['shape','color','clarity'].forEach(cat=>{
+    const v=sel[cat];
+    const d=document.getElementById('d-'+cat);
+    const h=document.getElementById('h-'+cat);
+    d.textContent=v||'—';
+    d.className='sel-val'+(v?'':' empty');
+    h.textContent=v||'—';
+  });
+  // Save button
+  const filled=sel.shape&&sel.color&&sel.clarity;
+  document.getElementById('save-btn').classList.toggle('ready',!!filled);
+  // Lot badge
+  document.getElementById('lot-badge').textContent=`Lot ${lotNum}`;
+  // Presets from history
+  updatePresets();
+}
+
+function updatePresets(){
+  const bar=document.getElementById('preset-bar');
+  let h='';
+  if(lots.length>0){
+    const last=lots[lots.length-1];
+    h+=`<span class="preset-btn accent" onclick="dupLast()"><span class="preset-icon">⧉</span> ${last.shape} ${last.color} ${last.clarity}</span>`;
+  }
+  // Add top combos from frequency
+  const topShapes=Object.entries(freq.shape).sort((a,b)=>b[1]-a[1]).slice(0,1);
+  const topColors=Object.entries(freq.color).sort((a,b)=>b[1]-a[1]).slice(0,1);
+  const topClarity=Object.entries(freq.clarity).sort((a,b)=>b[1]-a[1]).slice(0,1);
+  if(topShapes.length&&topColors.length&&topClarity.length){
+    const combo=`${topShapes[0][0]} ${topColors[0][0]} ${topClarity[0][0]}`;
+    h+=`<span class="preset-btn" onclick="applyPreset('${topShapes[0][0]}','${topColors[0][0]}','${topClarity[0][0]}','None','None','GS')"><span class="preset-icon">★</span> ${combo}</span>`;
+  }
+  if(lots.length>=2){
+    const prev=lots[lots.length-2];
+    h+=`<span class="preset-btn" onclick="applyPreset('${prev.shape}','${prev.color}','${prev.clarity}','${prev.fluor||'None'}','${prev.tinge||'None'}','${prev.rough||'GS'}')"><span class="preset-icon">↻</span> ${prev.shape} ${prev.color} ${prev.clarity}</span>`;
+  }
+  if(h){bar.innerHTML=h;bar.style.display='flex'}
+  else{
+    bar.innerHTML=`<span class="preset-btn" onclick="applyPreset('RD','G','VS1','None','None','GS')"><span class="preset-icon">★</span> RD G VS1</span>
+    <span class="preset-btn" onclick="applyPreset('OV','H','VS2','Faint','None','GM')"><span class="preset-icon">↻</span> OV H VS2</span>`;
+  }
+}
+
+// ═══════════════════════════════════════════
+// PICK
+// ═══════════════════════════════════════════
+function pick(cat,val){
+  sel[cat]=sel[cat]===val?null:val;
+  if(sel[cat]&&freq[cat]){freq[cat][val]=(freq[cat][val]||0)+1}
+
+  // Animate display
+  if(sel[cat]){
+    const d=document.getElementById('d-'+cat);
+    if(d){d.classList.remove('pop');void d.offsetWidth;d.classList.add('pop')}
+  }
+
+  // Scroll selected into view
+  if(sel[cat]){
+    const col=document.getElementById('col-'+cat);
+    if(col){
+      const item=col.querySelector(`[data-code="${val}"]`);
+      if(item)item.scrollIntoView({behavior:'smooth',block:'center'});
+    }
+  }
+
+  render();
+}
+
+// ═══════════════════════════════════════════
+// FILTER
+// ═══════════════════════════════════════════
+function toggleFilter(cat){
+  const cf=document.getElementById('cf-'+cat);
+  const fb=document.getElementById('fb-'+cat);
+  const isOpen=cf.classList.contains('open');
+  cf.classList.toggle('open');
+  fb.classList.toggle('active');
+  if(!isOpen){
+    setTimeout(()=>cf.querySelector('input').focus(),100);
+  } else {
+    cf.querySelector('input').value='';
+    filterCol(cat,'');
+  }
+}
+
+function filterCol(cat,query){
+  const q=query.trim().toUpperCase();
+  const col=document.getElementById('col-'+cat);
+  col.querySelectorAll('.col-item').forEach(item=>{
+    const code=item.getAttribute('data-code')||'';
+    const match=!q||code.toUpperCase().includes(q);
+    item.classList.toggle('filtered-out',!match);
+  });
+  // Hide empty group labels
+  col.querySelectorAll('.col-group').forEach(label=>{
+    let next=label.nextElementSibling;
+    let hasVisible=false;
+    while(next&&!next.classList.contains('col-group')){
+      if(next.classList.contains('col-item')&&!next.classList.contains('filtered-out'))hasVisible=true;
+      next=next.nextElementSibling;
+    }
+    label.style.display=hasVisible?'':'none';
+  });
+}
+
+// ═══════════════════════════════════════════
+// PRESETS & DUPLICATE
+// ═══════════════════════════════════════════
+function applyPreset(shape,color,clarity,fluor,tinge,rough){
+  sel.shape=shape;sel.color=color;sel.clarity=clarity;
+  sel.fluor=fluor||null;sel.tinge=tinge||null;sel.rough=rough||null;
+  render();
+  // Scroll to selected items
+  ['shape','color','clarity'].forEach(cat=>{
+    if(sel[cat]){
+      const col=document.getElementById('col-'+cat);
+      const item=col?.querySelector(`[data-code="${sel[cat]}"]`);
+      if(item)setTimeout(()=>item.scrollIntoView({behavior:'smooth',block:'center'}),100);
+    }
+  });
+  showToast('Preset applied');
+}
+
+function dupLast(){
+  if(lots.length===0){showToast('No previous lot');return}
+  const last=lots[lots.length-1];
+  applyPreset(last.shape,last.color,last.clarity,last.fluor,last.tinge,last.rough);
+  showToast('Duplicated last lot');
+}
+
+// ═══════════════════════════════════════════
+// SAVE
+// ═══════════════════════════════════════════
+function saveLot(){
+  if(!sel.shape||!sel.color||!sel.clarity){showToast('Select Shape, Color & Clarity');return}
+  const lot={...sel,num:lotNum};
+  lots.push(lot);
+  lotNum++;
+  showToast(`Lot ${lot.num} saved — ${lot.shape} ${lot.color} ${lot.clarity}`);
+  resetAll();
+}
+
+function resetAll(){
+  Object.keys(sel).forEach(k=>sel[k]=null);
+  // Clear filters
+  ['shape','color','clarity'].forEach(cat=>{
+    const cf=document.getElementById('cf-'+cat);
+    if(cf.classList.contains('open')){cf.classList.remove('open');document.getElementById('fb-'+cat).classList.remove('active')}
+    cf.querySelector('input').value='';
+    filterCol(cat,'');
+  });
+  render();
+}
+
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
