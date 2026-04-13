@@ -122,6 +122,27 @@ html, body {
   min-height: 52px;
   flex-shrink: 0;
 }
+.status-bar .home-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  margin-right: 8px;
+}
+.status-bar .home-btn:active {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  color: var(--accent);
+}
 .status-bar .tender-name {
   font-weight: 600;
   font-size: 14px;
@@ -1594,6 +1615,7 @@ html, body {
   <!-- ═══ SCREEN 2: CAMERA / OCR ═══ -->
   <div id="screen-camera" class="screen camera-screen">
     <div class="status-bar">
+      <button class="home-btn" onclick="goHome()" style="outline:none!important;">◂</button>
       <span class="tender-name" id="cam-tender-name">—</span>
       <span class="lot-count" id="cam-lot-count">0 lots</span>
       <span class="time" id="cam-time">--:--</span>
@@ -1652,6 +1674,7 @@ html, body {
   <!-- ═══ SCREEN 3: LOT DETAILS FORM ═══ -->
   <div id="screen-form" class="screen form-screen">
     <div class="status-bar">
+      <button class="home-btn" onclick="goHome()" style="outline:none!important;">◂</button>
       <span class="tender-name" id="form-tender-name">—</span>
       <span class="lot-count" id="form-lot-count">0 lots</span>
       <span class="time" id="form-time">--:--</span>
@@ -1702,6 +1725,7 @@ html, body {
   <!-- ═══ SCREEN 3.5: MEDIA CAPTURE ═══ -->
   <div id="screen-media" class="screen form-screen media-screen">
     <div class="status-bar">
+      <button class="home-btn" onclick="goHome()" style="outline:none!important;">◂</button>
       <span class="tender-name" id="media-tender-name">—</span>
       <span class="lot-count" id="media-lot-count">0 lots</span>
       <span class="time" id="media-time">--:--</span>
@@ -1824,6 +1848,7 @@ html, body {
   <!-- ═══ SCREEN 4: ATTRIBUTE PICKER ═══ -->
   <div id="screen-picker" class="screen picker-screen">
     <div class="status-bar">
+      <button class="home-btn" onclick="goHome()" style="outline:none!important;">◂</button>
       <span class="tender-name" id="pick-tender-name">—</span>
       <span class="lot-count" id="pick-lot-count">0 lots</span>
       <span class="time" id="pick-time">--:--</span>
@@ -2069,6 +2094,12 @@ function goToScreen(screenId) {
   next.classList.add('active');
   state.currentScreen = screenId;
   updateStatusBars();
+}
+
+function goHome() {
+  goToScreen('screen-tender');
+  state.tenderName = '';
+  state.tenderCode = '';
 }
 
 function selectTender(name, code) {
