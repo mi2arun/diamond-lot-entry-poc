@@ -119,6 +119,16 @@ html, body {
   min-height: 48px;
   flex-shrink: 0;
 }
+.status-bar .home-btn {
+  width: 28px;height: 28px;border-radius: 8px;
+  background: var(--bg-elevated);border: 1px solid var(--border);
+  display: flex;align-items: center;justify-content: center;
+  font-size: 13px;color: var(--text-secondary);cursor: pointer;
+  flex-shrink: 0;transition: all 0.15s ease;margin-right: 8px;
+}
+.status-bar .home-btn:active {
+  background: var(--accent-glow);border-color: var(--border-accent);color: var(--accent);
+}
 .status-bar .tender-name {
   font-weight: 600;
   font-size: 13px;
@@ -871,6 +881,7 @@ html, body {
   <!-- ═══ SCREEN 2: TERMINAL ═══ -->
   <div id="screen-terminal" class="screen">
     <div class="status-bar">
+      <button class="home-btn" onclick="goToScreen('screen-tender')" style="outline:none!important;">⌂</button>
       <span class="tender-name" id="t-tender">—</span>
       <span class="lot-count" id="t-lots">0 Lots</span>
       <span class="time" id="t-time">--:--</span>
