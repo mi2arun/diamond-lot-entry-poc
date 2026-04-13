@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Approach B — Three-Column Roller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08080a;--surface:#0e0e12;--card:#141418;--elevated:#1a1a20;--hover:#222228;--active:#2a2a32;
+  --accent:#d4a853;--accent-b:#f0c95e;--accent-d:#9a7a3a;--accent-g:rgba(212,168,83,0.15);--accent-gs:rgba(212,168,83,0.3);
+  --ok:#2dd4a0;--err:#f87171;
+  --t1:#e8e6e3;--t2:#7a7a80;--t3:#4a4a50;
+  --border:#222228;--border-a:rgba(212,168,83,0.3);
+  --r-sm:8px;--r-md:12px;--r-lg:16px;
+  --font:'Outfit',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{font-family:var(--font);background:var(--bg);color:var(--t1);height:100%;overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none}
+#app{width:100%;height:100%;max-width:412px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+
+.status{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.status .name{font-weight:600;font-size:13px;color:var(--accent)}
+.status .badge{font-family:var(--mono);font-size:11px;color:var(--t2);background:var(--elevated);padding:3px 10px;border-radius:20px}
+.status .label{font-family:var(--mono);font-size:9px;color:var(--accent-d);background:var(--accent-g);border:1px solid var(--border-a);padding:3px 10px;border-radius:20px;letter-spacing:1px;text-transform:uppercase}
+
+/* Selected display */
+.sel-display{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;min-height:52px}
+.sel-val{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--accent-b);letter-spacing:2px;min-width:40px;text-align:center}
+.sel-val.empty{color:var(--t3);font-size:16px}
+.sel-sep{color:var(--t3);font-size:14px}
+
+/* Three columns */
+.columns{display:flex;flex:1;overflow:hidden;border-bottom:1px solid var(--border)}
+.column{flex:1;display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
+.column:last-child{border-right:none}
+.col-header{padding:10px 8px 8px;text-align:center;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.col-header h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--t2)}
+.col-header .col-val{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent-b);margin-top:2px;min-height:20px}
+.col-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:4px}
+
+/* Column items */
+.col-group{font-size:8px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:1px;padding:8px 6px 4px;text-align:center}
+.col-item{
+  display:flex;align-items:center;justify-content:center;
+  padding:12px 8px;margin:3px 2px;
+  background:var(--card);border:1.5px solid var(--border);border-radius:var(--r-sm);
+  font-family:var(--mono);font-size:14px;font-weight:600;color:var(--t1);
+  cursor:pointer;transition:all .15s ease;text-align:center;
+  min-height:44px
+}
+.col-item:active{transform:scale(.95)}
+.col-item.selected{background:var(--accent-gs);border-color:var(--accent);color:var(--accent-b);box-shadow:0 0 8px var(--accent-g)}
+
+/* Shape items with icons */
+.col-item.shape-item{flex-direction:column;gap:2px;padding:10px 6px}
+.col-item.shape-item svg{width:20px;height:20px;fill:none;stroke:var(--t2);stroke-width:1.5}
+.col-item.shape-item.selected svg{stroke:var(--accent-b)}
+.col-item.shape-item .s-name{font-size:9px;font-weight:500}
+
+/* Secondary attributes */
+.secondary{padding:8px 12px;background:var(--surface);flex-shrink:0}
+.sec-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.sec-label{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;min-width:42px}
+.sec-chips{display:flex;gap:5px;overflow-x:auto;flex:1;-webkit-overflow-scrolling:touch}
+.sec-chip{
+  padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:20px;
+  font-family:var(--mono);font-size:11px;font-weight:600;color:var(--t1);
+  cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s ease
+}
+.sec-chip:active{transform:scale(.95)}
+.sec-chip.selected{background:var(--accent-gs);border-color:var(--accent);color:var(--accent-b)}
+
+/* Bottom bar */
+.bottom-bar{display:flex;gap:10px;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--border);flex-shrink:0}
+.btn{flex:1;padding:14px;border-radius:var(--r-md);border:none;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer}
+.btn-sec{background:var(--elevated);color:var(--t2);border:1px solid var(--border)}
+.btn-pri{background:var(--accent);color:var(--bg)}
+.btn:active{transform:scale(.97)}
+
+::-webkit-scrollbar{width:0;height:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="status">
+    <span class="name">Arctic Canadian</span>
+    <span class="badge">Lot 7</span>
+    <span class="label">B · 3-Column</span>
+  </div>
+
+  <div class="sel-display">
+    <span class="sel-val" id="d-shape">—</span>
+    <span class="sel-sep">·</span>
+    <span class="sel-val" id="d-color">—</span>
+    <span class="sel-sep">·</span>
+    <span class="sel-val" id="d-clarity">—</span>
+  </div>
+
+  <div class="columns">
+    <!-- Shape column -->
+    <div class="column">
+      <div class="col-header"><h4>Shape</h4><div class="col-val" id="h-shape">—</div></div>
+      <div class="col-scroll" id="col-shape"></div>
+    </div>
+    <!-- Color column -->
+    <div class="column">
+      <div class="col-header"><h4>Color</h4><div class="col-val" id="h-color">—</div></div>
+      <div class="col-scroll" id="col-color"></div>
+    </div>
+    <!-- Clarity column -->
+    <div class="column">
+      <div class="col-header"><h4>Clarity</h4><div class="col-val" id="h-clarity">—</div></div>
+      <div class="col-scroll" id="col-clarity"></div>
+    </div>
+  </div>
+
+  <!-- Secondary: Fluor, Tinge, Type as compact rows -->
+  <div class="secondary" id="secondary"></div>
+
+  <div class="bottom-bar">
+    <button class="btn btn-sec" onclick="resetAll()">Clear</button>
+    <button class="btn btn-pri" onclick="saveLot()">Save Lot →</button>
+  </div>
+</div>
+
+<script>
+const SHAPES=[
+  {c:'RD',n:'Round',svg:'<circle cx="14" cy="14" r="11"/>'},
+  {c:'OV',n:'Oval',svg:'<ellipse cx="14" cy="14" rx="8" ry="11"/>'},
+  {c:'PR',n:'Pear',svg:'<path d="M14 3C14 3 5 11 5 17c0 4 4 7 9 7s9-3 9-7C23 11 14 3 14 3z"/>'},
+  {c:'CU',n:'Cushion',svg:'<rect x="3" y="3" width="22" height="22" rx="7"/>'},
+  {c:'PN',n:'Princess',svg:'<rect x="3" y="3" width="22" height="22" rx="1"/>'},
+  {c:'EM',n:'Emerald',svg:'<rect x="2" y="5" width="24" height="18" rx="3"/>'},
+  {c:'MQ',n:'Marquise',svg:'<ellipse cx="14" cy="14" rx="7" ry="12"/>'},
+  {c:'RN',n:'Radiant',svg:'<rect x="3" y="3" width="22" height="22" rx="3"/>'},
+  {c:'HT',n:'Heart',svg:'<path d="M14 24C14 24 3 17 3 10c0-3.5 2.5-6 5.5-6C11 4 14 7 14 7s3-3 5.5-3C22.5 4 25 6.5 25 10c0 7-11 14-11 14z"/>'},
+  {c:'TR',n:'Trillion',svg:'<polygon points="14,3 25,25 3,25"/>'},
+  {c:'BG',n:'Baguette',svg:'<rect x="4" y="7" width="20" height="14" rx="1"/>'}
+];
+const COLOR_GROUPS={'Colorless':['D','E','F'],'Near':['G','H','I','J'],'Faint':['K','L','M'],'V.Light':['N','O','P','Q','R'],'Light':['S','T','U','V','W','X','Y','Z']};
+const CLARITY_GROUPS={'FL/IF':['FL','IF'],'VVS':['VVS1','VVS2'],'VS':['VS1','VS2'],'SI':['SI1','SI2','SI3'],'I':['I1','I2','I3']};
+const FLUOR=['None','Faint','Medium','Strong','V.Strong'];
+const TINGE=['None','Brown','Green','Milky','BGM','LBT','SBT'];
+const ROUGH=['GS','GM','FS','LS','NG','CH','IN'];
+
+const sel={shape:null,color:null,clarity:null,fluor:null,tinge:null,rough:null};
+
+function render(){
+  // Shape column
+  let sh='';
+  SHAPES.forEach(s=>{
+    const c=sel.shape===s.c?'selected':'';
+    sh+=`<div class="col-item shape-item ${c}" onclick="pick('shape','${s.c}')"><svg viewBox="0 0 28 28">${s.svg}</svg><span class="s-name">${s.c}</span></div>`;
+  });
+  document.getElementById('col-shape').innerHTML=sh;
+
+  // Color column
+  let co='';
+  for(const[g,items]of Object.entries(COLOR_GROUPS)){
+    co+=`<div class="col-group">${g}</div>`;
+    items.forEach(c=>{
+      const s=sel.color===c?'selected':'';
+      co+=`<div class="col-item ${s}" onclick="pick('color','${c}')">${c}</div>`;
+    });
+  }
+  document.getElementById('col-color').innerHTML=co;
+
+  // Clarity column
+  let cl='';
+  for(const[g,items]of Object.entries(CLARITY_GROUPS)){
+    cl+=`<div class="col-group">${g}</div>`;
+    items.forEach(c=>{
+      const s=sel.clarity===c?'selected':'';
+      cl+=`<div class="col-item ${s}" onclick="pick('clarity','${c}')">${c}</div>`;
+    });
+  }
+  document.getElementById('col-clarity').innerHTML=cl;
+
+  // Secondary
+  let sec='';
+  sec+=`<div class="sec-row"><span class="sec-label">Fluor</span><div class="sec-chips">${FLUOR.map(f=>`<span class="sec-chip ${sel.fluor===f?'selected':''}" onclick="pick('fluor','${f}')">${f}</span>`).join('')}</div></div>`;
+  sec+=`<div class="sec-row"><span class="sec-label">Tinge</span><div class="sec-chips">${TINGE.map(t=>`<span class="sec-chip ${sel.tinge===t?'selected':''}" onclick="pick('tinge','${t}')">${t}</span>`).join('')}</div></div>`;
+  sec+=`<div class="sec-row"><span class="sec-label">Type</span><div class="sec-chips">${ROUGH.map(r=>`<span class="sec-chip ${sel.rough===r?'selected':''}" onclick="pick('rough','${r}')">${r}</span>`).join('')}</div></div>`;
+  document.getElementById('secondary').innerHTML=sec;
+
+  // Headers
+  document.getElementById('h-shape').textContent=sel.shape||'—';
+  document.getElementById('h-color').textContent=sel.color||'—';
+  document.getElementById('h-clarity').textContent=sel.clarity||'—';
+  document.getElementById('d-shape').textContent=sel.shape||'—';
+  document.getElementById('d-shape').className='sel-val'+(sel.shape?'':' empty');
+  document.getElementById('d-color').textContent=sel.color||'—';
+  document.getElementById('d-color').className='sel-val'+(sel.color?'':' empty');
+  document.getElementById('d-clarity').textContent=sel.clarity||'—';
+  document.getElementById('d-clarity').className='sel-val'+(sel.clarity?'':' empty');
+}
+
+function pick(cat,val){sel[cat]=sel[cat]===val?null:val;render()}
+function resetAll(){Object.keys(sel).forEach(k=>sel[k]=null);render()}
+function saveLot(){alert('Lot saved: '+JSON.stringify(sel));resetAll()}
+
+render();
+</script>
+</body>
+</html>

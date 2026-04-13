@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Approach C — Matrix + Chips</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08080a;--surface:#0e0e12;--card:#141418;--elevated:#1a1a20;--hover:#222228;--active:#2a2a32;
+  --accent:#d4a853;--accent-b:#f0c95e;--accent-d:#9a7a3a;--accent-g:rgba(212,168,83,0.15);--accent-gs:rgba(212,168,83,0.3);
+  --ok:#2dd4a0;--err:#f87171;
+  --t1:#e8e6e3;--t2:#7a7a80;--t3:#4a4a50;
+  --border:#222228;--border-a:rgba(212,168,83,0.3);
+  --r-sm:8px;--r-md:12px;
+  --font:'Outfit',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{font-family:var(--font);background:var(--bg);color:var(--t1);height:100%;overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none}
+#app{width:100%;height:100%;max-width:412px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+
+.status{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.status .name{font-weight:600;font-size:13px;color:var(--accent)}
+.status .badge{font-family:var(--mono);font-size:11px;color:var(--t2);background:var(--elevated);padding:3px 10px;border-radius:20px}
+.status .label{font-family:var(--mono);font-size:9px;color:var(--accent-d);background:var(--accent-g);border:1px solid var(--border-a);padding:3px 10px;border-radius:20px;letter-spacing:1px;text-transform:uppercase}
+
+/* Summary */
+.summary{display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.s-chip{padding:4px 10px;border-radius:16px;font-family:var(--mono);font-size:11px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.s-chip.on{background:var(--accent-gs);color:var(--accent-b);border:1px solid var(--accent-d)}
+.s-chip.off{background:var(--elevated);color:var(--t3);border:1px solid var(--border)}
+
+/* Main area */
+.main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:80px}
+
+/* Shape row */
+.shape-strip{padding:10px 12px;border-bottom:1px solid var(--border)}
+.shape-strip h4{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;padding:0 4px}
+.shape-scroll{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.sh-chip{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  min-width:52px;padding:8px 6px;
+  background:var(--card);border:1.5px solid var(--border);border-radius:var(--r-sm);
+  cursor:pointer;transition:all .15s ease;flex-shrink:0
+}
+.sh-chip:active{transform:scale(.93)}
+.sh-chip.selected{background:var(--accent-gs);border-color:var(--accent);box-shadow:0 0 10px var(--accent-g)}
+.sh-chip svg{width:22px;height:22px;fill:none;stroke:var(--t2);stroke-width:1.5}
+.sh-chip.selected svg{stroke:var(--accent-b)}
+.sh-chip span{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--t2)}
+.sh-chip.selected span{color:var(--accent-b)}
+
+/* Matrix */
+.matrix-section{padding:8px}
+.matrix-header{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 8px}
+.matrix-header h4{font-size:13px;font-weight:700}
+.matrix-header .hint{font-size:10px;color:var(--t3);font-style:italic}
+
+.matrix-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.matrix{border-collapse:collapse;width:100%;min-width:380px}
+.matrix th{
+  font-family:var(--mono);font-size:10px;font-weight:600;color:var(--t3);
+  padding:6px 2px;text-align:center;position:sticky;top:0;background:var(--bg);z-index:1
+}
+.matrix .row-hdr{
+  font-family:var(--mono);font-size:12px;font-weight:700;color:var(--t1);
+  padding:0 6px;text-align:center;min-width:28px;position:sticky;left:0;background:var(--bg);z-index:1
+}
+.matrix td.cell{
+  padding:2px;text-align:center
+}
+.matrix .cell-btn{
+  width:100%;padding:10px 2px;
+  background:var(--card);border:1px solid var(--border);border-radius:4px;
+  cursor:pointer;transition:all .12s ease;font-size:0;min-height:36px
+}
+.matrix .cell-btn:active{transform:scale(.9)}
+.matrix .cell-btn.selected{background:var(--accent);border-color:var(--accent-b);box-shadow:0 0 8px var(--accent-gs)}
+.matrix .cell-btn.row-hl{background:var(--accent-g);border-color:rgba(212,168,83,0.2)}
+.matrix .cell-btn.col-hl{background:var(--accent-g);border-color:rgba(212,168,83,0.2)}
+.matrix .row-hdr.hl{color:var(--accent-b)}
+.matrix th.hl{color:var(--accent-b)}
+
+/* Secondary compact */
+.sec-area{padding:8px 12px}
+.sec-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.sec-label{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;min-width:42px}
+.sec-chips{display:flex;gap:5px;overflow-x:auto;flex:1;-webkit-overflow-scrolling:touch}
+.sec-chip{
+  padding:8px 14px;background:var(--card);border:1px solid var(--border);border-radius:20px;
+  font-family:var(--mono);font-size:11px;font-weight:600;color:var(--t1);
+  cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s ease
+}
+.sec-chip:active{transform:scale(.95)}
+.sec-chip.selected{background:var(--accent-gs);border-color:var(--accent);color:var(--accent-b)}
+
+/* Bottom */
+.bottom-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:412px;display:flex;gap:10px;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--border);z-index:5}
+.btn{flex:1;padding:14px;border-radius:var(--r-md);border:none;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer}
+.btn-sec{background:var(--elevated);color:var(--t2);border:1px solid var(--border)}
+.btn-pri{background:var(--accent);color:var(--bg)}
+.btn:active{transform:scale(.97)}
+
+::-webkit-scrollbar{width:0;height:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="status">
+    <span class="name">Arctic Canadian</span>
+    <span class="badge">Lot 7</span>
+    <span class="label">C · Matrix</span>
+  </div>
+  <div class="summary" id="summary"></div>
+
+  <div class="main">
+    <!-- Shape strip -->
+    <div class="shape-strip">
+      <h4>Shape</h4>
+      <div class="shape-scroll" id="shapes"></div>
+    </div>
+
+    <!-- Color × Clarity matrix -->
+    <div class="matrix-section">
+      <div class="matrix-header">
+        <h4>Color × Clarity</h4>
+        <span class="hint">1 tap = both</span>
+      </div>
+      <div class="matrix-wrap"><table class="matrix" id="matrix"></table></div>
+    </div>
+
+    <!-- Secondary -->
+    <div class="sec-area" id="secondary"></div>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn btn-sec" onclick="resetAll()">Clear</button>
+    <button class="btn btn-pri" onclick="saveLot()">Save Lot →</button>
+  </div>
+</div>
+
+<script>
+const SHAPES=[
+  {c:'RD',svg:'<circle cx="14" cy="14" r="11"/>'},{c:'OV',svg:'<ellipse cx="14" cy="14" rx="8" ry="11"/>'},
+  {c:'PR',svg:'<path d="M14 3C14 3 5 11 5 17c0 4 4 7 9 7s9-3 9-7C23 11 14 3 14 3z"/>'},
+  {c:'CU',svg:'<rect x="3" y="3" width="22" height="22" rx="7"/>'},{c:'PN',svg:'<rect x="3" y="3" width="22" height="22" rx="1"/>'},
+  {c:'EM',svg:'<rect x="2" y="5" width="24" height="18" rx="3"/>'},{c:'MQ',svg:'<ellipse cx="14" cy="14" rx="7" ry="12"/>'},
+  {c:'RN',svg:'<rect x="3" y="3" width="22" height="22" rx="3"/>'},{c:'HT',svg:'<path d="M14 24C14 24 3 17 3 10c0-3.5 2.5-6 5.5-6C11 4 14 7 14 7s3-3 5.5-3C22.5 4 25 6.5 25 10c0 7-11 14-11 14z"/>'},
+  {c:'TR',svg:'<polygon points="14,3 25,25 3,25"/>'},{c:'BG',svg:'<rect x="4" y="7" width="20" height="14" rx="1"/>'}
+];
+const M_COLORS=['D','E','F','G','H','I','J','K','L','M'];
+const M_CLARITY=['IF','VVS1','VVS2','VS1','VS2','SI1','SI2','SI3','I1','I2'];
+const FLUOR=['None','Faint','Medium','Strong','V.Strong'];
+const TINGE=['None','Brown','Green','Milky','BGM','LBT','SBT'];
+const ROUGH=['GS','GM','FS','LS','NG','CH','IN'];
+
+const sel={shape:null,color:null,clarity:null,fluor:null,tinge:null,rough:null};
+
+function render(){
+  // Shapes
+  document.getElementById('shapes').innerHTML=SHAPES.map(s=>{
+    const c=sel.shape===s.c?'selected':'';
+    return `<div class="sh-chip ${c}" onclick="pick('shape','${s.c}')"><svg viewBox="0 0 28 28">${s.svg}</svg><span>${s.c}</span></div>`;
+  }).join('');
+
+  // Matrix
+  let mt='<thead><tr><th></th>'+M_CLARITY.map(c=>`<th class="${sel.clarity===c?'hl':''}">${c}</th>`).join('')+'</tr></thead><tbody>';
+  M_COLORS.forEach(color=>{
+    mt+=`<tr><td class="row-hdr ${sel.color===color?'hl':''}">${color}</td>`;
+    M_CLARITY.forEach(clarity=>{
+      const isSel=sel.color===color&&sel.clarity===clarity;
+      const rowHl=sel.color===color&&!isSel?'row-hl':'';
+      const colHl=sel.clarity===clarity&&!isSel?'col-hl':'';
+      mt+=`<td class="cell"><div class="cell-btn ${isSel?'selected':''} ${rowHl} ${colHl}" onclick="pickMatrix('${color}','${clarity}')"></div></td>`;
+    });
+    mt+='</tr>';
+  });
+  mt+='</tbody>';
+  document.getElementById('matrix').innerHTML=mt;
+
+  // Secondary
+  let sec='';
+  sec+=`<div class="sec-row"><span class="sec-label">Fluor</span><div class="sec-chips">${FLUOR.map(f=>`<span class="sec-chip ${sel.fluor===f?'selected':''}" onclick="pick('fluor','${f}')">${f}</span>`).join('')}</div></div>`;
+  sec+=`<div class="sec-row"><span class="sec-label">Tinge</span><div class="sec-chips">${TINGE.map(t=>`<span class="sec-chip ${sel.tinge===t?'selected':''}" onclick="pick('tinge','${t}')">${t}</span>`).join('')}</div></div>`;
+  sec+=`<div class="sec-row"><span class="sec-label">Type</span><div class="sec-chips">${ROUGH.map(r=>`<span class="sec-chip ${sel.rough===r?'selected':''}" onclick="pick('rough','${r}')">${r}</span>`).join('')}</div></div>`;
+  document.getElementById('secondary').innerHTML=sec;
+
+  // Summary
+  const map=[['Shape',sel.shape],['Color',sel.color],['Clarity',sel.clarity],['Fluor',sel.fluor],['Tinge',sel.tinge],['Type',sel.rough]];
+  document.getElementById('summary').innerHTML=map.map(([l,v])=>
+    v?`<span class="s-chip on">${l}: ${v}</span>`:`<span class="s-chip off">${l}</span>`
+  ).join('');
+}
+
+function pick(cat,val){sel[cat]=sel[cat]===val?null:val;render()}
+function pickMatrix(color,clarity){sel.color=color;sel.clarity=clarity;render()}
+function resetAll(){Object.keys(sel).forEach(k=>sel[k]=null);render()}
+function saveLot(){alert('Saved: '+JSON.stringify(sel));resetAll()}
+
+render();
+</script>
+</body>
+</html>

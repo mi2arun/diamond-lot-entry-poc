@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Approach A — Stacked Rows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08080a;--surface:#0e0e12;--card:#141418;--elevated:#1a1a20;--hover:#222228;--active:#2a2a32;
+  --accent:#d4a853;--accent-b:#f0c95e;--accent-d:#9a7a3a;--accent-g:rgba(212,168,83,0.15);--accent-gs:rgba(212,168,83,0.3);
+  --ok:#2dd4a0;--warn:#fbbf24;--err:#f87171;
+  --t1:#e8e6e3;--t2:#7a7a80;--t3:#4a4a50;
+  --border:#222228;--border-a:rgba(212,168,83,0.3);
+  --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:24px;
+  --font:'Outfit',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{font-family:var(--font);background:var(--bg);color:var(--t1);height:100%;overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none}
+#app{width:100%;height:100%;max-width:412px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+
+/* Status bar */
+.status{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.status .name{font-weight:600;font-size:13px;color:var(--accent);letter-spacing:.5px}
+.status .badge{font-family:var(--mono);font-size:11px;color:var(--t2);background:var(--elevated);padding:3px 10px;border-radius:20px}
+.status .label{font-family:var(--mono);font-size:9px;color:var(--accent-d);background:var(--accent-g);border:1px solid var(--border-a);padding:3px 10px;border-radius:20px;letter-spacing:1px;text-transform:uppercase}
+
+/* Selected summary */
+.summary{display:flex;align-items:center;gap:6px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;min-height:44px;overflow-x:auto}
+.sum-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;font-family:var(--mono);font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.sum-chip.filled{background:var(--accent-gs);color:var(--accent-b);border:1px solid var(--accent-d)}
+.sum-chip.empty{background:var(--elevated);color:var(--t3);border:1px solid var(--border)}
+.sum-chip .lbl{font-size:8px;text-transform:uppercase;letter-spacing:.3px;opacity:.6;margin-right:3px}
+
+/* Main scrollable area */
+.picker-area{flex:1;overflow-y:auto;padding:0 12px 100px;-webkit-overflow-scrolling:touch}
+
+/* Section */
+.section{margin-top:14px}
+.section-head{display:flex;align-items:center;justify-content:space-between;padding:0 4px 8px}
+.section-head h3{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.section-head .count{font-family:var(--mono);font-size:10px;color:var(--t3)}
+.group-label{font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:1px;padding:8px 4px 6px}
+
+/* Chips */
+.chip-row{display:flex;flex-wrap:wrap;gap:7px;padding:0 0 4px}
+.chip{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:48px;min-height:44px;padding:8px 14px;
+  background:var(--card);border:1.5px solid var(--border);border-radius:var(--r-sm);
+  font-family:var(--mono);font-size:13px;font-weight:600;color:var(--t1);
+  cursor:pointer;transition:all .15s ease;position:relative
+}
+.chip:active{transform:scale(.94)}
+.chip.selected{background:var(--accent-gs);border-color:var(--accent);color:var(--accent-b);box-shadow:0 0 12px var(--accent-g)}
+.chip.selected::after{content:'✓';position:absolute;top:-4px;right:-4px;width:16px;height:16px;background:var(--accent);color:var(--bg);border-radius:50%;font-size:9px;display:flex;align-items:center;justify-content:center}
+
+/* Shape chips - larger with icons */
+.shape-chip{flex-direction:column;gap:4px;min-width:56px;min-height:56px;padding:8px 10px}
+.shape-chip svg{width:22px;height:22px;fill:none;stroke:var(--t2);stroke-width:1.5}
+.shape-chip.selected svg{stroke:var(--accent-b)}
+.shape-chip .s-label{font-size:10px;font-weight:500}
+
+/* Bottom bar */
+.bottom-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:412px;background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;z-index:5}
+.bottom-bar .btn{flex:1;padding:14px;border-radius:var(--r-md);border:none;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;transition:all .15s ease}
+.bottom-bar .btn-secondary{background:var(--elevated);color:var(--t2);border:1px solid var(--border)}
+.bottom-bar .btn-primary{background:var(--accent);color:var(--bg)}
+.bottom-bar .btn:active{transform:scale(.97)}
+
+/* Animations */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.section{animation:fadeIn .3s ease}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:0;height:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="status">
+    <span class="name">Arctic Canadian</span>
+    <span class="badge">Lot 7</span>
+    <span class="label">A · Stacked</span>
+  </div>
+
+  <div class="summary" id="summary">
+    <span class="sum-chip empty"><span class="lbl">Shape</span>—</span>
+    <span class="sum-chip empty"><span class="lbl">Color</span>—</span>
+    <span class="sum-chip empty"><span class="lbl">Clarity</span>—</span>
+    <span class="sum-chip empty"><span class="lbl">Fluor</span>—</span>
+    <span class="sum-chip empty"><span class="lbl">Tinge</span>—</span>
+    <span class="sum-chip empty"><span class="lbl">Type</span>—</span>
+  </div>
+
+  <div class="picker-area" id="picker-area"></div>
+
+  <div class="bottom-bar">
+    <button class="btn btn-secondary" onclick="resetAll()">Clear</button>
+    <button class="btn btn-primary" id="save-btn" onclick="saveLot()">Save Lot →</button>
+  </div>
+</div>
+
+<script>
+const SHAPES = [
+  {code:'RD',name:'Round',svg:'<circle cx="14" cy="14" r="11"/>'},
+  {code:'OV',name:'Oval',svg:'<ellipse cx="14" cy="14" rx="8" ry="11"/>'},
+  {code:'PR',name:'Pear',svg:'<path d="M14 3C14 3 5 11 5 17c0 4 4 7 9 7s9-3 9-7C23 11 14 3 14 3z"/>'},
+  {code:'CU',name:'Cushion',svg:'<rect x="3" y="3" width="22" height="22" rx="7"/>'},
+  {code:'PN',name:'Princess',svg:'<rect x="3" y="3" width="22" height="22" rx="1"/>'},
+  {code:'EM',name:'Emerald',svg:'<rect x="2" y="5" width="24" height="18" rx="3"/>'},
+  {code:'MQ',name:'Marquise',svg:'<ellipse cx="14" cy="14" rx="7" ry="12"/>'},
+  {code:'RN',name:'Radiant',svg:'<rect x="3" y="3" width="22" height="22" rx="3"/>'},
+  {code:'HT',name:'Heart',svg:'<path d="M14 24C14 24 3 17 3 10c0-3.5 2.5-6 5.5-6C11 4 14 7 14 7s3-3 5.5-3C22.5 4 25 6.5 25 10c0 7-11 14-11 14z"/>'},
+  {code:'AS',name:'Asscher',svg:'<rect x="4" y="4" width="20" height="20" rx="2"/>'},
+  {code:'TR',name:'Trillion',svg:'<polygon points="14,3 25,25 3,25"/>'},
+  {code:'BG',name:'Baguette',svg:'<rect x="4" y="7" width="20" height="14" rx="1"/>'}
+];
+
+const COLORS = {
+  'Colorless': ['D','E','F'],
+  'Near Colorless': ['G','H','I','J'],
+  'Faint': ['K','L','M'],
+  'Very Light': ['N','O','P','Q','R'],
+  'Light': ['S','T','U','V','W','X','Y','Z'],
+  'Fancy': ['FY','FP','FB','FBR','FG','FO']
+};
+
+const CLARITY = {
+  'Flawless': ['FL','IF'],
+  'Very Very Slight': ['VVS1','VVS2'],
+  'Very Slight': ['VS1','VS2'],
+  'Slight Incl.': ['SI1','SI2','SI3'],
+  'Included': ['I1','I2','I3']
+};
+
+const FLUOR = { 'Intensity': ['None','Faint','Medium','Strong','V.Strong'] };
+const TINGE = { 'Common': ['None','Brown','Green','Milky','BGM'], 'Specific': ['LBT','SBT','LGT','SGT','Yellow','Gray'] };
+const ROUGH = { 'Gem': ['GS','GM','FS','LS'], 'Other': ['NG','CH','IN','CL','BT','RJ'] };
+
+const selected = { shape:null, color:null, clarity:null, fluor:null, tinge:null, rough:null };
+
+function render() {
+  const area = document.getElementById('picker-area');
+  let html = '';
+
+  // Shape
+  html += `<div class="section"><div class="section-head"><h3>Shape</h3><span class="count">${SHAPES.length} options</span></div>`;
+  html += `<div class="chip-row">`;
+  SHAPES.forEach(s => {
+    const sel = selected.shape === s.code ? 'selected' : '';
+    html += `<div class="chip shape-chip ${sel}" onclick="pick('shape','${s.code}')"><svg viewBox="0 0 28 28">${s.svg}</svg><span class="s-label">${s.code}</span></div>`;
+  });
+  html += `</div></div>`;
+
+  // Color
+  html += `<div class="section"><div class="section-head"><h3>Color</h3><span class="count">26+ options</span></div>`;
+  for (const [group, items] of Object.entries(COLORS)) {
+    html += `<div class="group-label">${group}</div><div class="chip-row">`;
+    items.forEach(c => {
+      const sel = selected.color === c ? 'selected' : '';
+      html += `<div class="chip ${sel}" onclick="pick('color','${c}')">${c}</div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  // Clarity
+  html += `<div class="section"><div class="section-head"><h3>Clarity</h3><span class="count">13 options</span></div>`;
+  for (const [group, items] of Object.entries(CLARITY)) {
+    html += `<div class="group-label">${group}</div><div class="chip-row">`;
+    items.forEach(c => {
+      const sel = selected.clarity === c ? 'selected' : '';
+      html += `<div class="chip ${sel}" onclick="pick('clarity','${c}')">${c}</div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  // Fluorescence
+  html += `<div class="section"><div class="section-head"><h3>Fluorescence</h3></div>`;
+  for (const [group, items] of Object.entries(FLUOR)) {
+    html += `<div class="chip-row">`;
+    items.forEach(c => {
+      const sel = selected.fluor === c ? 'selected' : '';
+      html += `<div class="chip ${sel}" onclick="pick('fluor','${c}')">${c}</div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  // Tinge
+  html += `<div class="section"><div class="section-head"><h3>Tinge / BGM</h3></div>`;
+  for (const [group, items] of Object.entries(TINGE)) {
+    html += `<div class="group-label">${group}</div><div class="chip-row">`;
+    items.forEach(c => {
+      const sel = selected.tinge === c ? 'selected' : '';
+      html += `<div class="chip ${sel}" onclick="pick('tinge','${c}')">${c}</div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  // Rough Type
+  html += `<div class="section"><div class="section-head"><h3>Rough Type</h3></div>`;
+  for (const [group, items] of Object.entries(ROUGH)) {
+    html += `<div class="group-label">${group}</div><div class="chip-row">`;
+    items.forEach(c => {
+      const sel = selected.rough === c ? 'selected' : '';
+      html += `<div class="chip ${sel}" onclick="pick('rough','${c}')">${c}</div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  area.innerHTML = html;
+  updateSummary();
+}
+
+function pick(cat, val) {
+  selected[cat] = selected[cat] === val ? null : val;
+  render();
+}
+
+function updateSummary() {
+  const map = [
+    ['Shape', selected.shape],['Color', selected.color],['Clarity', selected.clarity],
+    ['Fluor', selected.fluor],['Tinge', selected.tinge],['Type', selected.rough]
+  ];
+  document.getElementById('summary').innerHTML = map.map(([lbl, val]) =>
+    val ? `<span class="sum-chip filled"><span class="lbl">${lbl}</span>${val}</span>`
+        : `<span class="sum-chip empty"><span class="lbl">${lbl}</span>—</span>`
+  ).join('');
+}
+
+function resetAll() { Object.keys(selected).forEach(k => selected[k] = null); render(); }
+function saveLot() { alert('Lot saved: ' + JSON.stringify(selected)); resetAll(); }
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Approach D — Tab Sections</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08080a;--surface:#0e0e12;--card:#141418;--elevated:#1a1a20;--hover:#222228;--active:#2a2a32;
+  --accent:#d4a853;--accent-b:#f0c95e;--accent-d:#9a7a3a;--accent-g:rgba(212,168,83,0.15);--accent-gs:rgba(212,168,83,0.3);
+  --ok:#2dd4a0;--err:#f87171;
+  --t1:#e8e6e3;--t2:#7a7a80;--t3:#4a4a50;
+  --border:#222228;--border-a:rgba(212,168,83,0.3);
+  --r-sm:8px;--r-md:12px;
+  --font:'Outfit',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{font-family:var(--font);background:var(--bg);color:var(--t1);height:100%;overflow:hidden;-webkit-tap-highlight-color:transparent;user-select:none}
+#app{width:100%;height:100%;max-width:412px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
+
+.status{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.status .name{font-weight:600;font-size:13px;color:var(--accent)}
+.status .badge{font-family:var(--mono);font-size:11px;color:var(--t2);background:var(--elevated);padding:3px 10px;border-radius:20px}
+.status .label{font-family:var(--mono);font-size:9px;color:var(--accent-d);background:var(--accent-g);border:1px solid var(--border-a);padding:3px 10px;border-radius:20px;letter-spacing:1px;text-transform:uppercase}
+
+/* Selected values - always visible */
+.sel-bar{display:flex;align-items:center;gap:4px;padding:8px 12px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.sel-pill{
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  padding:6px 12px;border-radius:var(--r-sm);min-width:52px;
+  cursor:pointer;transition:all .15s ease;flex-shrink:0
+}
+.sel-pill .pill-label{font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.sel-pill .pill-val{font-family:var(--mono);font-size:13px;font-weight:700;min-height:18px}
+.sel-pill.empty{background:var(--elevated);border:1px solid var(--border)}
+.sel-pill.empty .pill-label{color:var(--t3)}
+.sel-pill.empty .pill-val{color:var(--t3)}
+.sel-pill.filled{background:var(--accent-gs);border:1px solid var(--accent-d)}
+.sel-pill.filled .pill-label{color:var(--accent-d)}
+.sel-pill.filled .pill-val{color:var(--accent-b)}
+.sel-pill.active-tab{border:2px solid var(--accent);box-shadow:0 0 10px var(--accent-g)}
+.sel-pill:active{transform:scale(.95)}
+
+/* Tab navigation */
+.tab-nav{display:flex;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.tab-btn{
+  flex:1;padding:10px 4px;text-align:center;
+  font-size:11px;font-weight:600;color:var(--t3);
+  cursor:pointer;transition:all .15s ease;position:relative;
+  border:none;background:none;font-family:var(--font)
+}
+.tab-btn.active{color:var(--accent-b)}
+.tab-btn.active::after{content:'';position:absolute;bottom:0;left:20%;right:20%;height:2px;background:var(--accent);border-radius:1px}
+.tab-btn .tab-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-left:4px;vertical-align:middle}
+.tab-btn .tab-dot.on{background:var(--ok)}
+
+/* Tab content */
+.tab-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px;padding-bottom:90px}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:fadeIn .2s ease}
+
+/* Chip styles */
+.grp{font-size:9px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:1px;padding:8px 4px 6px}
+.grp:first-child{padding-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.chip{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:48px;min-height:48px;padding:10px 16px;
+  background:var(--card);border:1.5px solid var(--border);border-radius:var(--r-sm);
+  font-family:var(--mono);font-size:14px;font-weight:600;color:var(--t1);
+  cursor:pointer;transition:all .15s ease
+}
+.chip:active{transform:scale(.94)}
+.chip.selected{background:var(--accent-gs);border-color:var(--accent);color:var(--accent-b);box-shadow:0 0 10px var(--accent-g)}
+
+/* Shape chips */
+.shape-chip{flex-direction:column;gap:4px;min-width:60px;min-height:60px;padding:8px}
+.shape-chip svg{width:24px;height:24px;fill:none;stroke:var(--t2);stroke-width:1.5}
+.shape-chip.selected svg{stroke:var(--accent-b)}
+.shape-chip .s-name{font-size:10px;font-weight:500}
+
+/* Search */
+.search{display:flex;align-items:center;background:var(--elevated);border:1px solid var(--border);border-radius:var(--r-sm);padding:0 12px;margin-bottom:12px}
+.search input{flex:1;background:none;border:none;outline:none;color:var(--t1);font-family:var(--font);font-size:13px;padding:10px 0}
+.search input::placeholder{color:var(--t3)}
+.search .si{color:var(--t3);font-size:14px;margin-right:8px}
+
+/* Bottom */
+.bottom-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:412px;display:flex;gap:10px;padding:10px 16px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--border);z-index:5}
+.btn{flex:1;padding:14px;border-radius:var(--r-md);border:none;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer}
+.btn-sec{background:var(--elevated);color:var(--t2);border:1px solid var(--border)}
+.btn-pri{background:var(--accent);color:var(--bg)}
+.btn:active{transform:scale(.97)}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+::-webkit-scrollbar{width:0;height:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="status">
+    <span class="name">Arctic Canadian</span>
+    <span class="badge">Lot 7</span>
+    <span class="label">D · Tabs</span>
+  </div>
+
+  <!-- Always-visible selected values -->
+  <div class="sel-bar" id="sel-bar"></div>
+
+  <!-- Tab nav -->
+  <div class="tab-nav" id="tab-nav"></div>
+
+  <!-- Tab content -->
+  <div class="tab-content" id="tab-content"></div>
+
+  <div class="bottom-bar">
+    <button class="btn btn-sec" onclick="resetAll()">Clear</button>
+    <button class="btn btn-pri" onclick="saveLot()">Save Lot →</button>
+  </div>
+</div>
+
+<script>
+const TABS = [
+  { key:'shape', label:'Shape', data:[
+    {g:'Popular',items:[
+      {c:'RD',n:'Round',svg:'<circle cx="14" cy="14" r="11"/>'},
+      {c:'OV',n:'Oval',svg:'<ellipse cx="14" cy="14" rx="8" ry="11"/>'},
+      {c:'PR',n:'Pear',svg:'<path d="M14 3C14 3 5 11 5 17c0 4 4 7 9 7s9-3 9-7C23 11 14 3 14 3z"/>'},
+      {c:'CU',n:'Cushion',svg:'<rect x="3" y="3" width="22" height="22" rx="7"/>'},
+      {c:'PN',n:'Princess',svg:'<rect x="3" y="3" width="22" height="22" rx="1"/>'},
+      {c:'EM',n:'Emerald',svg:'<rect x="2" y="5" width="24" height="18" rx="3"/>'}
+    ]},
+    {g:'Fancy',items:[
+      {c:'MQ',n:'Marquise',svg:'<ellipse cx="14" cy="14" rx="7" ry="12"/>'},
+      {c:'RN',n:'Radiant',svg:'<rect x="3" y="3" width="22" height="22" rx="3"/>'},
+      {c:'HT',n:'Heart',svg:'<path d="M14 24C14 24 3 17 3 10c0-3.5 2.5-6 5.5-6C11 4 14 7 14 7s3-3 5.5-3C22.5 4 25 6.5 25 10c0 7-11 14-11 14z"/>'},
+      {c:'TR',n:'Trillion',svg:'<polygon points="14,3 25,25 3,25"/>'},
+      {c:'BG',n:'Baguette',svg:'<rect x="4" y="7" width="20" height="14" rx="1"/>'}
+    ]},
+    {g:'Rough',items:[{c:'MC',n:'Macle'},{c:'SW',n:'Sawable'},{c:'MKE',n:'Makeable'},{c:'IR',n:'Irregular'}]}
+  ]},
+  { key:'color', label:'Color', data:[
+    {g:'Colorless',items:['D','E','F'].map(c=>({c}))},
+    {g:'Near Colorless',items:['G','H','I','J'].map(c=>({c}))},
+    {g:'Faint',items:['K','L','M'].map(c=>({c}))},
+    {g:'Very Light',items:['N','O','P','Q','R'].map(c=>({c}))},
+    {g:'Light',items:['S','T','U','V','W','X','Y','Z'].map(c=>({c}))},
+    {g:'Fancy',items:['FY','FP','FB','FBR','FG','FO'].map(c=>({c}))}
+  ]},
+  { key:'clarity', label:'Clarity', data:[
+    {g:'Flawless',items:['FL','IF'].map(c=>({c}))},
+    {g:'Very Very Slight',items:['VVS1','VVS2'].map(c=>({c}))},
+    {g:'Very Slight',items:['VS1','VS2'].map(c=>({c}))},
+    {g:'Slight Inclusion',items:['SI1','SI2','SI3'].map(c=>({c}))},
+    {g:'Included',items:['I1','I2','I3'].map(c=>({c}))}
+  ]},
+  { key:'fluor', label:'Fluor', data:[
+    {g:'Intensity',items:['None','Faint','Medium','Strong','V.Strong'].map(c=>({c}))}
+  ]},
+  { key:'tinge', label:'Tinge', data:[
+    {g:'Common',items:['None','Brown','Green','Milky','BGM'].map(c=>({c}))},
+    {g:'Specific',items:['LBT','SBT','LGT','SGT','Yellow','Gray','Hazy','Oily'].map(c=>({c}))}
+  ]},
+  { key:'rough', label:'Type', data:[
+    {g:'Gem Quality',items:['GS','GM','FS','LS'].map(c=>({c}))},
+    {g:'Other',items:['NG','CH','IN','CL','BT','RJ'].map(c=>({c}))}
+  ]}
+];
+
+const sel = {};
+TABS.forEach(t => sel[t.key] = null);
+let activeTab = 'shape';
+
+function render() {
+  // Selection bar
+  document.getElementById('sel-bar').innerHTML = TABS.map(t => {
+    const v = sel[t.key];
+    const isCurrent = activeTab === t.key;
+    const cls = v ? 'filled' : 'empty';
+    return `<div class="sel-pill ${cls} ${isCurrent?'active-tab':''}" onclick="switchTab('${t.key}')">
+      <span class="pill-label">${t.label}</span>
+      <span class="pill-val">${v || '—'}</span>
+    </div>`;
+  }).join('');
+
+  // Tab nav
+  document.getElementById('tab-nav').innerHTML = TABS.map(t => {
+    const isActive = activeTab === t.key;
+    const hasDot = sel[t.key] !== null;
+    return `<button class="tab-btn ${isActive?'active':''}" onclick="switchTab('${t.key}')" style="outline:none!important;">
+      ${t.label}${hasDot?`<span class="tab-dot on"></span>`:''}
+    </button>`;
+  }).join('');
+
+  // Tab content
+  const tab = TABS.find(t => t.key === activeTab);
+  let html = `<div class="tab-panel active">`;
+  html += `<div class="search"><span class="si">⌕</span><input type="text" placeholder="Search ${tab.label.toLowerCase()}..." oninput="filterTab(this.value)" id="tab-search" style="outline:none!important;"></div>`;
+
+  tab.data.forEach(group => {
+    html += `<div class="grp" data-group="${group.g}">${group.g}</div><div class="chips" data-group="${group.g}">`;
+    group.items.forEach(item => {
+      const isSel = sel[tab.key] === item.c ? 'selected' : '';
+      if (tab.key === 'shape' && item.svg) {
+        html += `<div class="chip shape-chip ${isSel}" data-code="${item.c}" onclick="pick('${tab.key}','${item.c}')">
+          <svg viewBox="0 0 28 28">${item.svg}</svg><span class="s-name">${item.c}</span></div>`;
+      } else {
+        html += `<div class="chip ${isSel}" data-code="${item.c}" onclick="pick('${tab.key}','${item.c}')">${item.c}</div>`;
+      }
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+  document.getElementById('tab-content').innerHTML = html;
+}
+
+function switchTab(key) {
+  activeTab = key;
+  render();
+}
+
+function pick(cat, val) {
+  sel[cat] = sel[cat] === val ? null : val;
+  // Auto-advance to next unfilled tab
+  const currentIdx = TABS.findIndex(t => t.key === cat);
+  if (sel[cat] !== null) {
+    for (let i = currentIdx + 1; i < TABS.length; i++) {
+      if (!sel[TABS[i].key]) {
+        setTimeout(() => { activeTab = TABS[i].key; render(); }, 250);
+        render(); // render current selection first
+        return;
+      }
+    }
+  }
+  render();
+}
+
+function filterTab(query) {
+  const q = query.trim().toUpperCase();
+  document.querySelectorAll('.chips').forEach(row => {
+    let hasMatch = false;
+    row.querySelectorAll('.chip').forEach(chip => {
+      const code = chip.getAttribute('data-code') || '';
+      const match = !q || code.toUpperCase().includes(q);
+      chip.style.display = match ? '' : 'none';
+      if (match) hasMatch = true;
+    });
+    const label = row.previousElementSibling;
+    if (label && label.classList.contains('grp')) {
+      label.style.display = hasMatch ? '' : 'none';
+    }
+  });
+}
+
+function resetAll() { TABS.forEach(t => sel[t.key] = null); activeTab = 'shape'; render(); }
+function saveLot() { alert('Saved: ' + JSON.stringify(sel)); resetAll(); }
+
+render();
+</script>
+</body>
+</html>
