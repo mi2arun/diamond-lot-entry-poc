@@ -890,6 +890,16 @@ html, body {
   white-space: nowrap;
   flex-shrink: 0;
   font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.summary-chip:active {
+  transform: scale(0.95);
+  background: var(--accent-glow-strong);
+}
+.summary-chip.current {
+  border-color: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow-strong);
 }
 .summary-chip.empty {
   background: var(--bg-elevated);
@@ -920,6 +930,9 @@ html, body {
   background: var(--bg-active);
   transition: all 0.3s ease;
   flex: 1;
+  cursor: pointer;
+  padding: 8px 0;
+  background-clip: content-box;
 }
 .step-dot + .step-dot { margin-left: 4px; }
 .step-dot.completed { background: var(--accent-dim); }
@@ -1346,8 +1359,22 @@ html, body {
   gap: 10px;
   flex-shrink: 0;
 }
+.picker-bottom .btn-back {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.picker-bottom .btn-back:active { background: var(--bg-active); }
+.picker-bottom .btn-back:disabled { opacity: 0.3; pointer-events: none; }
 .picker-bottom .btn-skip {
-  padding: 14px 20px;
+  padding: 14px 16px;
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -1842,6 +1869,7 @@ html, body {
 
     <!-- Bottom actions -->
     <div class="picker-bottom">
+      <button class="btn-back" id="btn-back" onclick="prevStep()" disabled>‹ Back</button>
       <button class="btn-skip" onclick="skipStep()">Skip</button>
       <button class="btn-next" id="btn-next" onclick="nextStep()">Next →</button>
     </div>
@@ -2267,7 +2295,7 @@ function renderPickerStep() {
     let cls = 'step-dot';
     if (i < state.currentStep) cls += ' completed';
     if (i === state.currentStep) cls += ' active';
-    return `<div class="${cls}"></div>`;
+    return `<div class="${cls}" onclick="goToStep(${i})"></div>`;
   }).join('');
 
   // Summary bar
@@ -2291,16 +2319,20 @@ function renderPickerStep() {
 
   // Update matrix visibility
   updatePickerMode();
+
+  // Back button state
+  document.getElementById('btn-back').disabled = state.currentStep === 0;
 }
 
 function renderSummaryBar() {
   const bar = document.getElementById('summary-bar');
-  bar.innerHTML = STEPS.map(s => {
+  bar.innerHTML = STEPS.map((s, i) => {
     const val = state.lot.attributes[s.key];
+    const current = i === state.currentStep ? ' current' : '';
     if (val) {
-      return `<span class="summary-chip"><span class="chip-label">${s.label}</span> ${val}</span>`;
+      return `<span class="summary-chip${current}" onclick="goToStep(${i})"><span class="chip-label">${s.label}</span> ${val}</span>`;
     }
-    return `<span class="summary-chip empty"><span class="chip-label">${s.label}</span> —</span>`;
+    return `<span class="summary-chip empty${current}" onclick="goToStep(${i})"><span class="chip-label">${s.label}</span> —</span>`;
   }).join('');
 }
 
@@ -2616,6 +2648,26 @@ function nextStep() {
     return;
   }
 
+  renderPickerStep();
+}
+
+function prevStep() {
+  if (state.currentStep <= 0) return;
+  state.currentStep--;
+
+  // If matrix was used and we're on clarity step, skip back past it
+  if (state.matrixSelection && STEPS[state.currentStep].key === 'clarity') {
+    state.currentStep--;
+  }
+
+  if (state.currentStep < 0) state.currentStep = 0;
+  renderPickerStep();
+}
+
+function goToStep(idx) {
+  if (idx < 0 || idx >= STEPS.length) return;
+  state.currentStep = idx;
+  state.pickerMode = 'grid';
   renderPickerStep();
 }
 
