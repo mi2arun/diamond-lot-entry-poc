@@ -971,6 +971,130 @@ html, body {
   color: var(--bg-deep);
 }
 
+/* Search/Filter bar */
+.search-bar {
+  display: flex;
+  align-items: center;
+  margin: 0 16px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  gap: 8px;
+  flex-shrink: 0;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.search-bar:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.search-bar .search-icon {
+  font-size: 15px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+.search-bar:focus-within .search-icon {
+  color: var(--accent);
+}
+.search-bar input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 11px 0;
+  caret-color: var(--accent);
+}
+.search-bar input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.search-clear {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-active);
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  line-height: 1;
+  padding: 0;
+}
+.search-clear:active {
+  background: var(--accent-dim);
+  color: var(--bg-deep);
+}
+.search-clear.visible {
+  display: flex;
+}
+.search-match-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 24px;
+  text-align: right;
+}
+
+/* No results state */
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  gap: 12px;
+  opacity: 0;
+  animation: fadeIn 0.25s ease forwards;
+}
+.no-results .no-results-icon {
+  font-size: 36px;
+  opacity: 0.4;
+}
+.no-results .no-results-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+.no-results .no-results-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Chip highlight match */
+.chip .match-highlight {
+  color: var(--accent-bright);
+  font-weight: 700;
+}
+.chip.shape-chip .shape-label .match-highlight {
+  color: var(--accent-bright);
+  font-weight: 700;
+}
+
+/* Hidden chip (filtered out) */
+.chip.filtered-out {
+  display: none !important;
+}
+.chip-group.filtered-out {
+  display: none !important;
+}
+
+/* Expand items filtered */
+.expanded-items .chip.filtered-out {
+  display: none !important;
+}
+
 /* Favorites strip */
 .favorites-strip {
   display: flex;
@@ -1692,8 +1816,19 @@ html, body {
 
     <!-- Mode toggle (only for Color+Clarity step) -->
     <div class="mode-toggle" id="mode-toggle" style="display: none;">
-      <button class="active" onclick="setPickerMode('grid')">Grid</button>
-      <button onclick="setPickerMode('matrix')">Rapaport Matrix</button>
+      <button class="active" onclick="setPickerMode('grid', this)">Grid</button>
+      <button onclick="setPickerMode('matrix', this)">Rapaport Matrix</button>
+    </div>
+
+    <!-- Search/Filter bar -->
+    <div class="search-bar" id="search-bar">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="search-input" placeholder="Search..." autocomplete="off" autocorrect="off" spellcheck="false"
+             style="outline: none !important; box-shadow: none !important;"
+             oninput="filterAttributes(this.value)">
+      <span class="search-match-count" id="search-match-count"></span>
+      <button class="search-clear" id="search-clear" onclick="clearSearch()"
+              style="outline: none !important; box-shadow: none !important;">✕</button>
     </div>
 
     <!-- Favorites strip -->
@@ -2145,6 +2280,9 @@ function renderPickerStep() {
     renderMatrix();
   }
 
+  // Reset search
+  initSearch();
+
   // Favorites
   renderFavorites(step);
 
@@ -2180,6 +2318,134 @@ function renderFavorites(step) {
   `;
 }
 
+// ═══════════════════════════════════════════
+// SEARCH / FILTER
+// ═══════════════════════════════════════════
+function initSearch() {
+  const input = document.getElementById('search-input');
+  const step = STEPS[state.currentStep];
+  if (!step) return;
+  input.value = '';
+  input.placeholder = `Search ${step.label.toLowerCase()}...`;
+  document.getElementById('search-clear').classList.remove('visible');
+  document.getElementById('search-match-count').textContent = '';
+}
+
+function filterAttributes(query) {
+  const q = query.trim().toLowerCase();
+  const clearBtn = document.getElementById('search-clear');
+  const countEl = document.getElementById('search-match-count');
+  const body = document.getElementById('picker-body');
+  const favStrip = document.getElementById('favorites-strip');
+  const step = STEPS[state.currentStep];
+
+  // Toggle clear button
+  clearBtn.classList.toggle('visible', q.length > 0);
+
+  // No query — show everything
+  if (!q) {
+    countEl.textContent = '';
+    body.querySelectorAll('.chip').forEach(c => c.classList.remove('filtered-out'));
+    body.querySelectorAll('.chip-group').forEach(g => g.classList.remove('filtered-out'));
+    body.querySelectorAll('.chip .match-highlight').forEach(el => {
+      el.replaceWith(el.textContent);
+    });
+    // Restore text for shape chips
+    body.querySelectorAll('.chip.shape-chip .shape-label').forEach(lbl => {
+      lbl.innerHTML = lbl.textContent;
+    });
+    // Restore non-shape chip text
+    body.querySelectorAll('.chip:not(.shape-chip)').forEach(chip => {
+      if (!chip.querySelector('svg')) {
+        chip.innerHTML = chip.textContent.trim();
+      }
+    });
+    favStrip.style.display = '';
+    // Re-show expand buttons
+    body.querySelectorAll('.expand-btn').forEach(btn => btn.style.display = '');
+    return;
+  }
+
+  // Hide favorites when searching
+  favStrip.style.display = 'none';
+
+  let totalMatch = 0;
+
+  // Process each group
+  body.querySelectorAll('.chip-group').forEach(groupEl => {
+    let groupHasMatch = false;
+    const chips = groupEl.querySelectorAll('.chip');
+
+    chips.forEach(chip => {
+      const code = chip.getAttribute('data-code') || chip.textContent.trim();
+      const match = code.toLowerCase().includes(q);
+
+      if (match) {
+        chip.classList.remove('filtered-out');
+        groupHasMatch = true;
+        totalMatch++;
+        highlightMatch(chip, code, q);
+      } else {
+        chip.classList.add('filtered-out');
+      }
+    });
+
+    // Show/hide entire group
+    groupEl.classList.toggle('filtered-out', !groupHasMatch);
+
+    // Auto-expand expandable sections when searching
+    const expanded = groupEl.querySelector('.expanded-items');
+    if (expanded) {
+      expanded.style.display = 'flex';
+      const expandBtn = groupEl.querySelector('.expand-btn');
+      if (expandBtn) expandBtn.style.display = 'none';
+    }
+  });
+
+  // Update match count
+  countEl.textContent = totalMatch > 0 ? totalMatch : '';
+
+  // No results
+  const existingNoResults = body.querySelector('.no-results');
+  if (totalMatch === 0) {
+    if (!existingNoResults) {
+      const noRes = document.createElement('div');
+      noRes.className = 'no-results';
+      noRes.innerHTML = `
+        <span class="no-results-icon">◇</span>
+        <span class="no-results-text">No match for "${q}"</span>
+        <span class="no-results-hint">Try a shorter term or clear search</span>
+      `;
+      body.appendChild(noRes);
+    }
+  } else if (existingNoResults) {
+    existingNoResults.remove();
+  }
+}
+
+function highlightMatch(chip, code, query) {
+  const idx = code.toLowerCase().indexOf(query);
+  if (idx === -1) return;
+  const before = code.substring(0, idx);
+  const match = code.substring(idx, idx + query.length);
+  const after = code.substring(idx + query.length);
+  const highlighted = `${before}<span class="match-highlight">${match}</span>${after}`;
+
+  if (chip.classList.contains('shape-chip')) {
+    const label = chip.querySelector('.shape-label');
+    if (label) label.innerHTML = highlighted;
+  } else {
+    chip.innerHTML = highlighted;
+  }
+}
+
+function clearSearch() {
+  const input = document.getElementById('search-input');
+  input.value = '';
+  filterAttributes('');
+  input.focus();
+}
+
 function renderGrid(step) {
   const body = document.getElementById('picker-body');
   let html = '';
@@ -2199,6 +2465,7 @@ function renderGrid(step) {
         const svgContent = SHAPE_SVGS[item.svg] || '';
         html += `
           <div class="chip shape-chip ${isSelected ? 'selected' : ''}"
+               data-code="${code}"
                onclick="selectAttribute('${step.key}', '${code}', this)">
             <svg viewBox="0 0 28 28">${svgContent}</svg>
             <span class="shape-label">${code}</span>
@@ -2206,6 +2473,7 @@ function renderGrid(step) {
       } else {
         html += `
           <div class="chip ${isSelected ? 'selected' : ''}"
+               data-code="${code}"
                onclick="selectAttribute('${step.key}', '${code}', this)">
             ${code}
           </div>`;
@@ -2223,6 +2491,7 @@ function renderGrid(step) {
         const isSelected = state.lot.attributes[step.key] === item;
         html += `
           <div class="chip ${isSelected ? 'selected' : ''}"
+               data-code="${item}"
                onclick="selectAttribute('${step.key}', '${item}', this)">
             ${item}
           </div>`;
@@ -2359,11 +2628,13 @@ function skipStep() {
   renderPickerStep();
 }
 
-function setPickerMode(mode) {
+function setPickerMode(mode, el) {
   state.pickerMode = mode;
   // Update toggle buttons
-  document.querySelectorAll('.mode-toggle button').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  const buttons = document.querySelectorAll('.mode-toggle button');
+  buttons.forEach(b => b.classList.remove('active'));
+  if (el) { el.classList.add('active'); }
+  else { buttons[mode === 'grid' ? 0 : 1].classList.add('active'); }
   updatePickerMode();
 }
 
