@@ -98,11 +98,20 @@ html,body{font-family:var(--font);background:var(--bg);color:var(--t1);height:10
 .input-row .mini-input:focus{border-color:var(--accent)}
 .input-row .mini-input::placeholder{color:var(--t3)}
 .input-bar{display:flex;align-items:center;gap:6px;padding:4px 10px 4px;margin:0 0 2px}
-.cam-btn{width:38px;height:38px;border-radius:50%;background:var(--elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;transition:all .15s ease}
-.cam-btn:active{background:var(--accent-g);border-color:var(--accent-d)}
-.input-bar .code-input{flex:1;padding:10px 14px;background:var(--input);border:2px solid var(--border);border-radius:var(--r-full);color:var(--t1);font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:1px;outline:none;caret-color:var(--accent);transition:border-color .2s ease}
-.input-bar .code-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-g)}
-.input-bar .code-input::placeholder{color:var(--t3);font-weight:400;letter-spacing:.5px}
+.input-bar .code-wrap{flex:1;display:flex;align-items:center;background:var(--input);border:2px solid var(--border);border-radius:var(--r-full);padding:0 4px 0 12px;transition:border-color .2s ease}
+.input-bar .code-wrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-g)}
+.input-bar .code-wrap input{flex:1;background:none;border:none;color:var(--t1);font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:1px;outline:none;caret-color:var(--accent);padding:10px 0}
+.input-bar .code-wrap input::placeholder{color:var(--t3);font-weight:400;letter-spacing:.5px}
+.input-bar .code-wrap .cam-inside{width:32px;height:32px;border-radius:50%;background:var(--elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;flex-shrink:0;transition:all .15s ease;margin-left:4px}
+.input-bar .code-wrap .cam-inside:active{background:var(--accent-g);border-color:var(--accent-d)}
+
+/* Media preview strip */
+.media-strip{display:flex;gap:6px;padding:6px 12px 2px;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-shrink:0}
+.media-strip:empty{display:none}
+.media-preview{width:52px;height:52px;border-radius:var(--r-sm);background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;font-size:18px;animation:slideUp .2s ease}
+.media-preview .m-type{position:absolute;top:2px;left:4px;font-size:7px;font-family:var(--mono);font-weight:700;color:var(--accent);background:var(--accent-g);padding:1px 4px;border-radius:4px}
+.media-preview .m-del{position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:var(--err);border:none;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;line-height:1}
+.media-preview .m-del:active{transform:scale(.85)}
 .send-btn{width:38px;height:38px;border-radius:50%;background:var(--accent);border:none;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--bg);cursor:pointer;flex-shrink:0;font-weight:700;transition:all .15s ease}
 .send-btn:active{background:var(--accent-b);transform:scale(.92)}
 .send-btn.ready{animation:sendPulse 1s ease infinite}
@@ -250,9 +259,13 @@ html,body{font-family:var(--font);background:var(--bg);color:var(--t1);height:10
           <input type="number" class="mini-input" id="inp-price" placeholder="0" style="outline:none!important">
         </div>
       </div>
+      <div class="media-strip" id="media-strip"></div>
       <div class="input-bar">
-        <button class="cam-btn" onclick="openCamera()" style="outline:none!important">📷</button>
-        <input type="text" class="code-input" id="code-input" placeholder="RD G VS1" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" oninput="onInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();sendStone()}" style="outline:none!important">
+        <div class="code-wrap">
+          <input type="text" id="code-input" placeholder="RD G VS1" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" oninput="onInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();sendStone()}" style="outline:none!important">
+          <button class="cam-inside" onclick="addMedia('photo')" style="outline:none!important">📷</button>
+          <button class="cam-inside" onclick="addMedia('video')" style="outline:none!important;font-size:12px;">🎬</button>
+        </div>
         <button class="send-btn" id="send-btn" onclick="sendStone()" style="outline:none!important">↑</button>
       </div>
       <div class="sug-strip" id="sug-strip"></div>
@@ -317,7 +330,8 @@ const SVGS = {
 // ═══════════════════════════════════════════
 const state = {
   tender:'', lots:[], currentLot:null, stones:[],
-  parsed:{}, sheetTab:'shape'
+  parsed:{}, sheetTab:'shape',
+  pendingMedia:[] // photos/videos queued for next stone
 };
 
 // ═══════════════════════════════════════════
@@ -421,13 +435,15 @@ function sendStone() {
   const attrs = parseCode(text);
   if (!attrs.shape) { toast('Enter at least Shape'); return; }
 
+  const photos = state.pendingMedia.filter(m=>m.type==='photo').length;
+  const videos = state.pendingMedia.filter(m=>m.type==='video').length;
   const stone = {
     num: state.stones.length+1,
     attrs,
     codeStr: ATTRS.map(a=>attrs[a]||'—').join(' '),
     weight: document.getElementById('inp-weight').value || '',
     price: document.getElementById('inp-price').value || '',
-    media: { photos:0, videos:0 },
+    media: { photos, videos },
     raw: text
   };
   state.stones.push(stone);
@@ -442,6 +458,8 @@ function clearInputs() {
   document.getElementById('inp-weight').value = '';
   document.getElementById('inp-price').value = '';
   state.parsed = {};
+  state.pendingMedia = [];
+  renderMediaStrip();
   renderParseChips();
   renderSuggestions();
   document.getElementById('send-btn').classList.remove('ready');
@@ -670,7 +688,37 @@ function closeSheet(){document.getElementById('sheet-bg').classList.remove('show
 // ═══════════════════════════════════════════
 // TOAST
 // ═══════════════════════════════════════════
-function openCamera(){toast('Camera will open in Flutter app')}
+// ═══════════════════════════════════════════
+// MEDIA (pending for current stone)
+// ═══════════════════════════════════════════
+const PHOTO_ICONS = ['💎','🔷','✧','◈','⬥','◆','●'];
+let mediaCounter = 0;
+
+function addMedia(type) {
+  mediaCounter++;
+  const id = 'pm-' + mediaCounter;
+  const icon = type === 'photo' ? PHOTO_ICONS[state.pendingMedia.length % PHOTO_ICONS.length] : '▶';
+  state.pendingMedia.push({ id, type, icon });
+  renderMediaStrip();
+  toast(type === 'photo' ? 'Photo added' : 'Video added');
+}
+
+function removeMedia(id) {
+  state.pendingMedia = state.pendingMedia.filter(m => m.id !== id);
+  renderMediaStrip();
+}
+
+function renderMediaStrip() {
+  const strip = document.getElementById('media-strip');
+  if (state.pendingMedia.length === 0) { strip.innerHTML = ''; return; }
+  strip.innerHTML = state.pendingMedia.map(m =>
+    `<div class="media-preview">
+      <span class="m-type">${m.type === 'photo' ? 'IMG' : 'VID'}</span>
+      ${m.icon}
+      <button class="m-del" onclick="removeMedia('${m.id}')" style="outline:none!important">✕</button>
+    </div>`
+  ).join('');
+}
 
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
 </script>
