@@ -22,9 +22,8 @@ html,body{font-family:var(--font);background:var(--bg);color:var(--t1);height:10
 #app{width:100%;height:100%;max-width:412px;margin:0 auto;position:relative;overflow:hidden;background:var(--bg)}
 
 /* Screens */
-.screen{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;transform:translateX(100%);opacity:0;transition:transform .35s cubic-bezier(.16,1,.3,1),opacity .25s ease;will-change:transform,opacity;pointer-events:none;z-index:0}
-.screen.active{transform:translateX(0);opacity:1;pointer-events:all;z-index:2}
-.screen.exit-left{transform:translateX(-30%);opacity:0;z-index:1}
+.screen{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;visibility:hidden;pointer-events:none;z-index:0}
+.screen.active{visibility:visible;pointer-events:all;z-index:2}
 
 /* Status bar */
 .status-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;min-height:48px}
@@ -324,13 +323,8 @@ const state = {
 let currentScreen = 'screen-tender';
 function goScreen(id) {
   if (id === currentScreen) return;
-  // Reset ALL screens first
-  document.querySelectorAll('.screen').forEach(s => {
-    s.classList.remove('active','exit-left');
-  });
-  // Activate target
-  const nxt = document.getElementById(id);
-  if (nxt) { nxt.classList.add('active'); }
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
   currentScreen = id;
 }
 function tick(){document.querySelectorAll('.time').forEach(e=>e.textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}))}
