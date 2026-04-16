@@ -98,6 +98,8 @@ html,body{font-family:var(--font);background:var(--bg);color:var(--t1);height:10
 .input-row .mini-input:focus{border-color:var(--accent)}
 .input-row .mini-input::placeholder{color:var(--t3)}
 .input-bar{display:flex;align-items:center;gap:6px;padding:4px 10px 4px;margin:0 0 2px}
+.cam-btn{width:38px;height:38px;border-radius:50%;background:var(--elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;flex-shrink:0;transition:all .15s ease}
+.cam-btn:active{background:var(--accent-g);border-color:var(--accent-d)}
 .input-bar .code-input{flex:1;padding:10px 14px;background:var(--input);border:2px solid var(--border);border-radius:var(--r-full);color:var(--t1);font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:1px;outline:none;caret-color:var(--accent);transition:border-color .2s ease}
 .input-bar .code-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-g)}
 .input-bar .code-input::placeholder{color:var(--t3);font-weight:400;letter-spacing:.5px}
@@ -249,7 +251,8 @@ html,body{font-family:var(--font);background:var(--bg);color:var(--t1);height:10
         </div>
       </div>
       <div class="input-bar">
-        <input type="text" class="code-input" id="code-input" placeholder="Shape Color Clarity e.g. RD G VS1" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" oninput="onInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();sendStone()}" style="outline:none!important">
+        <button class="cam-btn" onclick="openCamera()" style="outline:none!important">📷</button>
+        <input type="text" class="code-input" id="code-input" placeholder="RD G VS1" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" oninput="onInput()" onkeydown="if(event.key==='Enter'){event.preventDefault();sendStone()}" style="outline:none!important">
         <button class="send-btn" id="send-btn" onclick="sendStone()" style="outline:none!important">↑</button>
       </div>
       <div class="sug-strip" id="sug-strip"></div>
@@ -667,6 +670,8 @@ function closeSheet(){document.getElementById('sheet-bg').classList.remove('show
 // ═══════════════════════════════════════════
 // TOAST
 // ═══════════════════════════════════════════
+function openCamera(){toast('Camera will open in Flutter app')}
+
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800)}
 </script>
 </body>
