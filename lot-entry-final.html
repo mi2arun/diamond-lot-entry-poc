@@ -323,12 +323,15 @@ const state = {
 // ═══════════════════════════════════════════
 let currentScreen = 'screen-tender';
 function goScreen(id) {
-  const cur = document.getElementById(currentScreen);
+  if (id === currentScreen) return;
+  // Reset ALL screens first
+  document.querySelectorAll('.screen').forEach(s => {
+    s.classList.remove('active','exit-left');
+  });
+  // Activate target
   const nxt = document.getElementById(id);
-  if (!cur||!nxt||id===currentScreen) return;
-  cur.classList.remove('active'); cur.classList.add('exit-left');
-  setTimeout(()=>cur.classList.remove('exit-left'),400);
-  nxt.classList.add('active'); currentScreen = id;
+  if (nxt) { nxt.classList.add('active'); }
+  currentScreen = id;
 }
 function tick(){document.querySelectorAll('.time').forEach(e=>e.textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}))}
 tick();setInterval(tick,10000);
